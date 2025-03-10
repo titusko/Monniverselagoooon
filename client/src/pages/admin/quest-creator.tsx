@@ -46,7 +46,7 @@ const rewardTypes = [
 
 export default function QuestCreator() {
   const { toast } = useToast();
-  
+
   const form = useForm<InsertQuest>({
     resolver: zodResolver(insertQuestSchema),
     defaultValues: {
@@ -57,13 +57,18 @@ export default function QuestCreator() {
       reward: "",
       rewardType: "token",
       rewardAmount: "0",
+      contractAddress: "",
+      chainId: 1,
       isActive: true,
     },
   });
 
   const createQuestMutation = useMutation({
     mutationFn: async (data: InsertQuest) => {
-      const res = await apiRequest("POST", "/api/quests", data);
+      const res = await apiRequest("POST", "/api/quests", {
+        ...data,
+        rewardAmount: data.rewardAmount ? parseFloat(data.rewardAmount) : 0,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -86,7 +91,7 @@ export default function QuestCreator() {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-4xl font-bold mb-8">Create New Quest</h1>
-      
+
       <div className="max-w-2xl mx-auto">
         <Form {...form}>
           <form
@@ -215,7 +220,7 @@ export default function QuestCreator() {
                   <FormItem>
                     <FormLabel>Reward Amount</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" {...field} onChange={(e) => field.onChange(e.target.value)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,7 +235,7 @@ export default function QuestCreator() {
                 <FormItem>
                   <FormLabel>Contract Address (Optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

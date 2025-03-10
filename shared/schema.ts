@@ -144,11 +144,22 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-export const insertQuestSchema = createInsertSchema(quests).omit({
-  id: true,
-  createdAt: true,
-  createdBy: true,
-});
+export const insertQuestSchema = createInsertSchema(quests)
+  .omit({
+    id: true,
+    createdAt: true,
+    createdBy: true,
+  })
+  .extend({
+    title: z.string().min(3, "Title must be at least 3 characters long"),
+    description: z.string().min(10, "Description must be at least 10 characters long"),
+    type: z.enum(["nft_mint", "token_stake", "governance", "social"]),
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+    rewardType: z.enum(["token", "nft", "xp", "badge"]),
+    rewardAmount: z.string().transform((val) => (val ? parseFloat(val) : 0)),
+    contractAddress: z.string().optional(),
+    chainId: z.number().int().positive().default(1),
+  });
 export const insertTeamSchema = createInsertSchema(teams);
 export const insertMessageSchema = createInsertSchema(messages);
 
