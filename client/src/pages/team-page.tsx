@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTeamSchema, type Team } from "@shared/schema";
 import { UsersIcon, Trophy, MessageSquare, Loader2 } from "lucide-react";
+import TeamChat from '@/components/team-chat'; // Fix the import path case
 
 export default function TeamPage() {
   const { user } = useAuth();
@@ -134,16 +135,13 @@ export default function TeamPage() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">{team.description}</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Chat
-                </Button>
+              <div className="flex gap-2 mb-4">
                 <Button variant="outline" size="sm">
                   <Trophy className="w-4 h-4 mr-2" />
                   Quests
                 </Button>
               </div>
+              <TeamChat teamId={team.id} />
             </CardContent>
           </Card>
         ))}

@@ -4,9 +4,9 @@ import { eq, and } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import { 
-  type Quest, 
-  type InsertQuest, 
+import {
+  type Quest,
+  type InsertQuest,
   quests,
   type Team,
   type InsertTeam,
@@ -17,8 +17,9 @@ import {
   achievements,
   userAchievements,
   type UserQuest,
-  userQuests
+  userQuests,
 } from "@shared/schema";
+import { messages, type Message } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -39,6 +40,8 @@ export interface IStorage {
   getTeam(teamId: number): Promise<Team | undefined>;
   addTeamMember(member: Omit<TeamMember, "id">): Promise<TeamMember>;
   removeTeamMember(teamId: number, userId: number): Promise<void>;
+  getTeamMembers(teamId: number): Promise<TeamMember[]>;
+  getTeamMessages(teamId: number): Promise<Message[]>;
 }
 
 const PostgresSessionStore = connectPg(session);
@@ -221,6 +224,28 @@ export class DatabaseStorage implements IStorage {
           eq(teamMembers.userId, userId)
         )
       );
+  }
+  async getTeamMembers(teamId: number): Promise<TeamMember[]> {
+    return await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.teamId, teamId));
+  }
+  async getTeamMessages(teamId: number): Promise<Message[]> {
+    const result = await db
+      .select({
+        id: messages.id,
+        content: messages.content,
+        type: messages.type,
+        createdAt: messages.createdAt,
+        senderId: messages.senderId,
+        teamId: messages.teamId,
+      })
+      .from(messages)
+      .where(eq(messages.teamId, teamId))
+      .orderBy(messages.createdAt);
+
+    return result;
   }
 }
 

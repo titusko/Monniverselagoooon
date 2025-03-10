@@ -1,6 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { parse } from "url";
+import { storage } from "./storage";
+import { db } from "./db";
+import { messages } from "@shared/schema";
 
 interface Client {
   ws: WebSocket;
@@ -13,23 +16,24 @@ class WebSocketService {
   private clients: Map<number, Client[]> = new Map();
 
   constructor(server: Server) {
+    console.log("Initializing WebSocket Service...");
     this.wss = new WebSocketServer({ 
       server,
-      // Add error handling for WebSocket server
       clientTracking: true,
-      perMessageDeflate: false // Disable compression to avoid some potential issues
+      perMessageDeflate: false
     });
     this.setupWebSocket();
+    console.log("WebSocket Server initialized successfully");
   }
 
   private setupWebSocket() {
-    // Add error handler for the WebSocket server
     this.wss.on('error', (error) => {
       console.error('WebSocket Server Error:', error);
     });
 
     this.wss.on("connection", (ws: WebSocket, request) => {
-      // Add error handler for each connection
+      console.log("New WebSocket connection attempt", request.url);
+
       ws.on('error', (error) => {
         console.error('WebSocket Connection Error:', error);
       });
@@ -37,35 +41,33 @@ class WebSocketService {
       try {
         const { userId, sessionId } = this.parseConnectionParams(request.url);
         if (!userId || !sessionId) {
+          console.log("Invalid connection parameters", { userId, sessionId });
           ws.close(1000, "Invalid connection parameters");
           return;
         }
 
+        console.log("Client connected successfully", { userId, sessionId });
         this.addClient(userId, sessionId, ws);
 
-        ws.on("message", (data) => {
+        ws.on("message", async (data) => {
           try {
-            // Handle data as buffer or string
             const message = typeof data === 'string' ? data : data.toString();
-            this.handleMessage(userId, message);
+            console.log("Received message from client", { userId, message });
+            await this.handleMessage(userId, message);
           } catch (err) {
             console.error("Error processing message:", err);
           }
         });
 
         ws.on("close", () => {
+          console.log("Client disconnected", { userId, sessionId });
           this.removeClient(userId, sessionId);
         });
 
-        // Send initial connection success message
         ws.send(JSON.stringify({ type: "connected", userId }));
       } catch (err) {
         console.error("Error in WebSocket connection setup:", err);
-        try {
-          ws.close(1011, "Internal server error");
-        } catch (closeErr) {
-          console.error("Error closing WebSocket:", closeErr);
-        }
+        ws.close(1011, "Internal server error");
       }
     });
   }
@@ -74,6 +76,7 @@ class WebSocketService {
     if (!url) return {};
     try {
       const { query } = parse(url, true);
+      console.log("Parsing connection parameters", { url, query });
       return {
         userId: query.userId ? Number(query.userId) : undefined,
         sessionId: query.sessionId as string | undefined,
@@ -89,6 +92,7 @@ class WebSocketService {
       this.clients.set(userId, []);
     }
     this.clients.get(userId)?.push({ ws, userId, sessionId });
+    console.log("Client added to clients map", { userId, sessionId, totalClients: this.clients.size });
   }
 
   private removeClient(userId: number, sessionId: string) {
@@ -98,21 +102,43 @@ class WebSocketService {
         userId,
         userClients.filter((client) => client.sessionId !== sessionId)
       );
+      console.log("Client removed from clients map", { userId, sessionId, remainingClients: this.clients.size });
     }
   }
 
-  private handleMessage(userId: number, data: string) {
+  private async handleMessage(userId: number, data: string) {
     try {
       const message = JSON.parse(data);
+      console.log("Processing message", { type: message.type, userId });
+
       switch (message.type) {
         case "chat":
-          this.broadcastToTeam(message.teamId, {
+          // Store the message in the database
+          const [storedMessage] = await db
+            .insert(messages)
+            .values({
+              senderId: userId,
+              teamId: message.teamId,
+              content: message.content,
+              type: "text",
+              createdAt: new Date(),
+            })
+            .returning();
+
+          // Get sender info
+          const sender = await storage.getUser(userId);
+          console.log("Message stored and sender fetched", { messageId: storedMessage.id, sender: sender?.username });
+
+          // Broadcast to team
+          await this.broadcastToTeam(message.teamId, {
             type: "chat",
-            userId,
-            content: message.content,
-            timestamp: new Date().toISOString(),
+            message: {
+              ...storedMessage,
+              senderName: sender?.username || "Unknown",
+            },
           });
           break;
+
         case "notification":
           this.sendToUser(message.targetUserId, {
             type: "notification",
@@ -120,18 +146,34 @@ class WebSocketService {
             timestamp: new Date().toISOString(),
           });
           break;
-        // Add more message types as needed
       }
     } catch (error) {
       console.error("Error handling websocket message:", error);
     }
   }
 
-  public broadcastToTeam(teamId: number, data: any) {
-    // Implement a simplified version for now
-    console.log(`Broadcasting to team ${teamId}: ${JSON.stringify(data)}`);
-    // In a real implementation, we would fetch team members from storage
-    // and send to each member individually
+  public async broadcastToTeam(teamId: number, data: any) {
+    try {
+      // Get all team members
+      const teamMembers = await storage.getTeamMembers(teamId);
+      console.log("Broadcasting to team", { teamId, memberCount: teamMembers.length });
+
+      const payload = JSON.stringify(data);
+
+      for (const member of teamMembers) {
+        const userClients = this.clients.get(member.userId);
+        if (userClients) {
+          userClients.forEach((client) => {
+            if (client.ws.readyState === WebSocket.OPEN) {
+              client.ws.send(payload);
+              console.log("Message sent to team member", { userId: member.userId });
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`Error broadcasting to team ${teamId}:`, err);
+    }
   }
 
   public sendToUser(userId: number, data: any) {
@@ -142,6 +184,7 @@ class WebSocketService {
         try {
           if (client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(payload);
+            console.log("Message sent to user", { userId });
           }
         } catch (err) {
           console.error(`Error sending to user ${userId}:`, err);
@@ -152,6 +195,8 @@ class WebSocketService {
 
   public broadcastGlobal(data: any) {
     const payload = JSON.stringify(data);
+    console.log("Broadcasting global message", { clientCount: this.wss.clients.size });
+
     this.wss.clients.forEach((client) => {
       try {
         if (client.readyState === WebSocket.OPEN) {
@@ -167,6 +212,7 @@ class WebSocketService {
 export let wsService: WebSocketService;
 
 export function setupWebSocket(server: Server) {
+  console.log("Setting up WebSocket service on server...");
   wsService = new WebSocketService(server);
   return wsService;
 }

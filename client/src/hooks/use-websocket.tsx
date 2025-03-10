@@ -4,6 +4,7 @@ import { useAuth } from "./use-auth";
 type WebSocketContextType = {
   connected: boolean;
   sendMessage: (data: any) => void;
+  wsRef: React.MutableRefObject<WebSocket | null>;
 };
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -14,37 +15,47 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("WebSocket: No user authenticated, skipping connection");
+      return;
+    }
 
     const sessionId = crypto.randomUUID();
-    const ws = new WebSocket(
-      `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
-        window.location.host
-      }/ws?userId=${user.id}&sessionId=${sessionId}`
-    );
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}&sessionId=${sessionId}`;
+
+    console.log("WebSocket: Attempting connection to", wsUrl);
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket: Connected successfully");
       setConnected(true);
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("WebSocket: Received message", data);
         handleWebSocketMessage(data);
       } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        console.error("WebSocket: Error parsing message:", error);
       }
     };
 
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");
+    ws.onclose = (event) => {
+      console.log("WebSocket: Disconnected", { code: event.code, reason: event.reason });
+      setConnected(false);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket: Connection error", error);
       setConnected(false);
     };
 
     wsRef.current = ws;
 
     return () => {
+      console.log("WebSocket: Cleaning up connection");
       ws.close();
     };
   }, [user]);
@@ -63,16 +74,20 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   const sendMessage = (data: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data));
+      const payload = JSON.stringify(data);
+      console.log("WebSocket: Sending message", data);
+      wsRef.current.send(payload);
+    } else {
+      console.warn("WebSocket: Cannot send message, connection not open");
     }
   };
 
   return (
-    <WebSocketContext.Provider value={{ connected, sendMessage }}>
+    <WebSocketContext.Provider value={{ connected, sendMessage, wsRef }}>
       {children}
     </WebSocketContext.Provider>
   );
-};
+}
 
 export function useWebSocket() {
   const context = useContext(WebSocketContext);

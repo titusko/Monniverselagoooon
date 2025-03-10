@@ -73,6 +73,17 @@ export const teamMembers = pgTable("team_members", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Chat Messages
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").references(() => users.id),
+  receiverId: integer("receiver_id").references(() => users.id),
+  teamId: integer("team_id").references(() => teams.id),
+  content: text("content").notNull(),
+  type: text("type").default("text"), // 'text', 'image', 'system'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Achievements/Badges
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
@@ -101,16 +112,6 @@ export const connections = pgTable("connections", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Chat Messages
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  senderId: integer("sender_id").references(() => users.id),
-  receiverId: integer("receiver_id").references(() => users.id),
-  teamId: integer("team_id").references(() => teams.id),
-  content: text("content").notNull(),
-  type: text("type").default("text"), // 'text', 'image', 'system'
-  createdAt: timestamp("created_at").defaultNow(),
-});
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -140,6 +141,21 @@ export const teamsRelations = relations(teams, ({ many, one }) => ({
 
 export const achievementsRelations = relations(achievements, ({ many }) => ({
   users: many(userAchievements),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
+    references: [users.id],
+  }),
+  team: one(teams, {
+    fields: [messages.teamId],
+    references: [teams.id],
+  }),
 }));
 
 // Insert Schemas
@@ -189,3 +205,4 @@ export type Team = typeof teams.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;

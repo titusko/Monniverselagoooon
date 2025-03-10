@@ -8,6 +8,34 @@ import { requireAdmin } from "./middleware/admin";
 import { setupWebSocket } from "./websocket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Add request logging middleware
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`, {
+      query: req.query,
+      body: req.body,
+      authenticated: req.isAuthenticated(),
+      userId: req.user?.id,
+    });
+
+    // Log response
+    const originalSend = res.send;
+    res.send = function (body) {
+      console.log(`Response ${res.statusCode}`, {
+        url: req.url,
+        userId: req.user?.id,
+      });
+      return originalSend.call(this, body);
+    };
+
+    next();
+  });
+
+  // Add health check endpoint
+  app.get("/health", (req, res) => {
+    console.log("Health check requested");
+    res.json({ status: "healthy", timestamp: new Date().toISOString() });
+  });
+
   setupAuth(app);
 
   app.post("/api/connect-wallet", async (req, res) => {
@@ -162,7 +190,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
+  // Add team messages endpoint with detailed logging
+  app.get("/api/teams/:id/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const teamId = parseInt(req.params.id);
+    console.log("Fetching team messages", { teamId, userId: req.user.id });
+
+    if (isNaN(teamId)) {
+      console.log("Invalid team ID provided", { teamId });
+      return res.status(400).send("Invalid team ID");
+    }
+
+    try {
+      // First verify user is a member of the team
+      const teamMembers = await storage.getTeamMembers(teamId);
+      const isMember = teamMembers.some(member => member.userId === req.user.id);
+
+      console.log("Team membership check", { 
+        teamId, 
+        userId: req.user.id, 
+        isMember,
+        memberCount: teamMembers.length
+      });
+
+      if (!isMember) {
+        return res.status(403).send("Not a team member");
+      }
+
+      // Get all messages for the team
+      const teamMessages = await storage.getTeamMessages(teamId);
+      console.log("Team messages retrieved", { 
+        teamId, 
+        messageCount: teamMessages.length 
+      });
+
+      res.json(teamMessages);
+    } catch (error) {
+      console.error("Error fetching team messages:", error);
+      res.status(500).send("Internal server error");
+    }
+  });
+
   const httpServer = createServer(app);
+  console.log("Setting up HTTP server on port 5000...");
   setupWebSocket(httpServer);
   return httpServer;
 }
