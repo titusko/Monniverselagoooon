@@ -52,17 +52,38 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2">
-      <div className="hidden md:flex flex-col justify-center p-8 bg-muted">
-        <h1 className="text-4xl font-bold mb-4">Monniverse Lagoon</h1>
-        <p className="text-muted-foreground">
-          Join the Web3 revolution. Complete quests, earn rewards, and connect with
-          the community.
-        </p>
+      <div 
+        className="hidden md:flex flex-col justify-center p-8 bg-cover bg-center relative"
+        style={{
+          backgroundImage: 'url("/attached_assets/photo_2025-03-08_15-40-48.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/50" /> {/* Dark overlay */}
+        <div className="relative z-10 text-white">
+          <img 
+            src="/attached_assets/TITLE MONNIVERSE (5).png"
+            alt="Monniverse Logo"
+            className="h-24 mb-8"
+          />
+          <p className="text-xl">
+            Join the Web3 revolution. Complete quests, earn rewards, and connect with
+            the community.
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center justify-center p-8">
         <Card className="w-full max-w-md">
           <CardHeader>
+            <div className="md:hidden mb-6">
+              <img 
+                src="/attached_assets/TITLE MONNIVERSE (5).png"
+                alt="Monniverse Logo"
+                className="h-16 mx-auto"
+              />
+            </div>
             <CardTitle>Welcome</CardTitle>
             <CardDescription>
               Sign in to your account or create a new one
