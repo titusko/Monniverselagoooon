@@ -20,7 +20,7 @@ class Web3Service {
     this.chains = new Map();
 
     // Import environment variables
-    const { ENV } = require('./environment');
+    import { ENV } from './environment';
 
     // Initialize supported chains
     this.addChain({
