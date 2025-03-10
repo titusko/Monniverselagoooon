@@ -1,10 +1,23 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { ENV, validateEnvironment } from "./environment";
+
+// Validate environment variables
+validateEnvironment();
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add global error handler for uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // In production, you might want to restart the process
+  if (ENV.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

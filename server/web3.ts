@@ -19,22 +19,28 @@ class Web3Service {
     this.providers = new Map();
     this.chains = new Map();
 
+    // Import environment variables
+    const { ENV } = require('./environment');
+
     // Initialize supported chains
     this.addChain({
-      rpcUrl: process.env.ETHEREUM_RPC_URL || "",
+      rpcUrl: ENV.ETHEREUM_RPC_URL,
       chainId: 1,
       name: "Ethereum",
-      questSystemAddress: process.env.ETHEREUM_QUEST_CONTRACT || "",
-      nftBadgeAddress: process.env.ETHEREUM_BADGE_CONTRACT || "",
+      questSystemAddress: ENV.ETHEREUM_QUEST_CONTRACT,
+      nftBadgeAddress: ENV.ETHEREUM_BADGE_CONTRACT,
     });
 
     this.addChain({
-      rpcUrl: process.env.POLYGON_RPC_URL || "",
+      rpcUrl: ENV.POLYGON_RPC_URL,
       chainId: 137,
       name: "Polygon",
-      questSystemAddress: process.env.POLYGON_QUEST_CONTRACT || "",
-      nftBadgeAddress: process.env.POLYGON_BADGE_CONTRACT || "",
+      questSystemAddress: ENV.POLYGON_QUEST_CONTRACT,
+      nftBadgeAddress: ENV.POLYGON_BADGE_CONTRACT,
     });
+    
+    // Log available chains for debugging
+    console.log(`Web3 service initialized with chains: ${Array.from(this.chains.keys()).join(', ')}`);
   }
 
   private addChain(config: ChainConfig) {

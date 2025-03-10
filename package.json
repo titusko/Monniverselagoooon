@@ -2,6 +2,13 @@
   "name": "rest-express",
   "version": "1.0.0",
   "type": "module",
+
+  "scripts": {
+    "dev": "tsx server/index.ts",
+    "build": "tsc && vite build",
+    "start": "node dist/server/index.js"
+  },
+
   "license": "MIT",
   "scripts": {
     "dev": "tsx server/index.ts",
