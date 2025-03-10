@@ -30,7 +30,7 @@ export const quests = pgTable("quests", {
   rewardType: text("reward_type").notNull(), // 'token', 'nft', 'xp', 'badge'
   rewardAmount: decimal("reward_amount"),
   contractAddress: text("contract_address"),
-  chainId: integer("chain_id"),
+  chainId: integer("chain_id").default(1),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   requirements: jsonb("requirements"),
@@ -138,6 +138,10 @@ export const teamsRelations = relations(teams, ({ many, one }) => ({
   messages: many(messages),
 }));
 
+export const achievementsRelations = relations(achievements, ({ many }) => ({
+  users: many(userAchievements),
+}));
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -160,16 +164,28 @@ export const insertQuestSchema = createInsertSchema(quests)
     contractAddress: z.string().optional(),
     chainId: z.number().int().positive().default(1),
   });
-export const insertTeamSchema = createInsertSchema(teams);
+
+export const insertTeamSchema = createInsertSchema(teams)
+  .omit({
+    id: true,
+    createdAt: true,
+    leaderId: true,
+  })
+  .extend({
+    name: z.string().min(3, "Team name must be at least 3 characters long"),
+    description: z.string().min(10, "Description must be at least 10 characters long"),
+  });
+
 export const insertMessageSchema = createInsertSchema(messages);
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type InsertQuest = z.infer<typeof insertQuestSchema>;
 export type Quest = typeof quests.$inferSelect;
 export type UserQuest = typeof userQuests.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type Team = typeof teams.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type Message = typeof messages.$inferSelect;
-export type InsertQuest = z.infer<typeof insertQuestSchema>;
