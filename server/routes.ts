@@ -75,7 +75,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     const userQuest = await storage.completeQuest(req.user.id, questId);
+
+    // Check and update achievements
+    await storage.checkAndUpdateAchievements(req.user.id);
+
     res.json(userQuest);
+  });
+
+  // Achievement Routes
+  app.get("/api/achievements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const [achievements, userAchievements] = await Promise.all([
+      storage.getAllAchievements(),
+      storage.getUserAchievements(req.user.id),
+    ]);
+    res.json({ achievements, userAchievements });
   });
 
   // Team Routes
@@ -129,6 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       role: "member",
       joinedAt: new Date(),
     });
+
+    // Check for team-related achievements
+    await storage.checkAndUpdateAchievements(req.user.id);
 
     res.json(member);
   });

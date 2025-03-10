@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -6,65 +8,58 @@ import {
   Award,
   Shield,
   Zap,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 
-const achievements = [
-  {
-    id: 1,
-    name: "Early Adopter",
-    description: "Joined during the platform's launch phase",
-    icon: Star,
-    rarity: "rare",
-    unlocked: true,
-  },
-  {
-    id: 2,
-    name: "Quest Master",
-    description: "Complete 10 quests",
-    icon: Trophy,
-    rarity: "epic",
-    unlocked: false,
-    progress: 3,
-    total: 10,
-  },
-  {
-    id: 3,
-    name: "Team Player",
-    description: "Join a team and complete a team quest",
-    icon: Users,
-    rarity: "common",
-    unlocked: false,
-  },
-  {
-    id: 4,
-    name: "NFT Collector",
-    description: "Mint your first NFT badge",
-    icon: Shield,
-    rarity: "rare",
-    unlocked: false,
-  },
-  {
-    id: 5,
-    name: "Web3 Pioneer",
-    description: "Connect your wallet and complete a blockchain quest",
-    icon: Zap,
-    rarity: "epic",
-    unlocked: false,
-  },
-];
+type Rarity = "common" | "rare" | "epic" | "legendary";
 
-function AchievementCard({ achievement }: { achievement: typeof achievements[0] }) {
-  const Icon = achievement.icon;
-  const rarityColors = {
-    common: "bg-slate-500",
-    rare: "bg-blue-500",
-    epic: "bg-purple-500",
-    legendary: "bg-orange-500",
-  };
+type Achievement = {
+  id: number;
+  name: string;
+  description: string;
+  type: string;
+  rarity: Rarity;
+  image?: string;
+  requirements: any;
+};
+
+type UserAchievement = {
+  id: number;
+  userId: number;
+  achievementId: number;
+  unlockedAt: string;
+};
+
+const rarityColors: Record<Rarity, string> = {
+  common: "bg-slate-500",
+  rare: "bg-blue-500",
+  epic: "bg-purple-500",
+  legendary: "bg-orange-500",
+};
+
+const achievementIcons: Record<string, any> = {
+  quest: Trophy,
+  social: Users,
+  web3: Shield,
+  team: Star,
+  special: Award,
+  skill: Zap,
+};
+
+function AchievementCard({ 
+  achievement, 
+  unlocked,
+  unlockedAt 
+}: { 
+  achievement: Achievement;
+  unlocked: boolean;
+  unlockedAt?: string;
+}) {
+  const Icon = achievementIcons[achievement.type] || Trophy;
 
   return (
-    <Card className={`${!achievement.unlocked && "opacity-75"}`}>
+    <Card className={`${!unlocked && "opacity-75"}`}>
       <CardHeader>
         <div className="flex items-center gap-4">
           <div className={`p-3 rounded-lg ${rarityColors[achievement.rarity]}`}>
@@ -84,20 +79,10 @@ function AchievementCard({ achievement }: { achievement: typeof achievements[0] 
         </div>
       </CardHeader>
       <CardContent>
-        {achievement.progress !== undefined && (
-          <div className="mt-4">
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary"
-                style={{
-                  width: `${(achievement.progress / achievement.total) * 100}%`,
-                }}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Progress: {achievement.progress} / {achievement.total}
-            </p>
-          </div>
+        {unlocked && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Unlocked: {new Date(unlockedAt!).toLocaleDateString()}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -105,6 +90,22 @@ function AchievementCard({ achievement }: { achievement: typeof achievements[0] 
 }
 
 export default function AchievementsPage() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/achievements"],
+    queryFn: () => apiRequest("GET", "/api/achievements").then((res) => res.json()),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const { achievements, userAchievements } = data || { achievements: [], userAchievements: [] };
+  const unlockedMap = new Map(userAchievements.map(ua => [ua.achievementId, ua]));
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-4 mb-8">
@@ -113,8 +114,13 @@ export default function AchievementsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {achievements.map((achievement) => (
-          <AchievementCard key={achievement.id} achievement={achievement} />
+        {achievements.map((achievement: Achievement) => (
+          <AchievementCard 
+            key={achievement.id} 
+            achievement={achievement}
+            unlocked={unlockedMap.has(achievement.id)}
+            unlockedAt={unlockedMap.get(achievement.id)?.unlockedAt}
+          />
         ))}
       </div>
     </div>
