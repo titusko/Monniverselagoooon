@@ -55,15 +55,15 @@ export default function AuthPage() {
       <div 
         className="hidden md:flex flex-col justify-center p-8 bg-cover bg-center relative"
         style={{
-          backgroundImage: 'url("/attached_assets/photo_2025-03-08_15-40-48.jpg")',
+          backgroundImage: 'url("/background.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0 bg-black/50" /> {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/50" />
         <div className="relative z-10 text-white">
           <img 
-            src="/attached_assets/TITLE MONNIVERSE (5).png"
+            src="/logo.png"
             alt="Monniverse Logo"
             className="h-24 mb-8"
           />
@@ -79,7 +79,7 @@ export default function AuthPage() {
           <CardHeader>
             <div className="md:hidden mb-6">
               <img 
-                src="/attached_assets/TITLE MONNIVERSE (5).png"
+                src="/logo.png"
                 alt="Monniverse Logo"
                 className="h-16 mx-auto"
               />

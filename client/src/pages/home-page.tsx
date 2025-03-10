@@ -10,17 +10,17 @@ export default function HomePage() {
     <div 
       className="min-h-screen bg-cover bg-center relative"
       style={{
-        backgroundImage: 'url("/attached_assets/photo_2025-03-08_15-40-48.jpg")',
+        backgroundImage: 'url("/background.jpg")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
     >
-      <div className="absolute inset-0 bg-black/50" /> {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
       <div className="relative z-10">
         <div className="container mx-auto px-4 py-16">
           <div className="flex justify-between items-center mb-16">
             <img 
-              src="/attached_assets/TITLE MONNIVERSE (5).png"
+              src="/logo.png"
               alt="Monniverse Logo"
               className="h-12"
             />
