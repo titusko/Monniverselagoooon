@@ -1,7 +1,9 @@
+
 import { ethers } from "ethers";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { quests, users, userQuests } from "@shared/schema";
+import { ENV } from './environment';
 
 interface ChainConfig {
   rpcUrl: string;
@@ -18,9 +20,6 @@ class Web3Service {
   constructor() {
     this.providers = new Map();
     this.chains = new Map();
-
-    // Import environment variables
-    import { ENV } from './environment';
 
     // Initialize supported chains
     this.addChain({
