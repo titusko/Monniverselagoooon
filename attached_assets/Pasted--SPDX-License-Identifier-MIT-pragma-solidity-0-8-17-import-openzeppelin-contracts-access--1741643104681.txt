@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract MonniverseQuestSystem is Ownable {
+    struct Quest {
+        uint256 id;
+        string title;
+        string description;
+        uint256 rewardAmount;
+        address rewardToken;
+        bool isActive;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 maxParticipants;
+        uint256 currentParticipants;
+    }
+    
+    struct UserProgress {
+        bool hasStarted;
+        bool hasCompleted;
+        uint256 startTime;
+        uint256 completionTime;
+    }
+    
+    // Quest ID => Quest data
+    mapping(uint256 => Quest) public quests;
+    
+    // Quest ID => User address => User progress
+    mapping(uint256 => mapping(address => UserProgress)) public userProgress;
+    
+    // User address => Quest IDs
+    mapping(address => uint256[]) public userQuests;
+    
+    uint256 private nextQuestId = 1;
+    
+    event QuestCreated(uint256 indexed questId, string title, uint256 rewardAmount);
+    event QuestStarted(uint256 indexed questId, address indexed user);
+    event QuestCompleted(uint256 indexed questId, address indexed user);
+    event RewardClaimed(uint256 indexed questId, address indexed user, uint256 amount);
+    
+    // Create a new quest
+    function createQuest(
+        string memory _title,
+        string memory _description,
+        uint256 _rewardAmount,
+        address _rewardToken,
+        uint256 _startTime,
+        uint256 _endTime,
+        uint256 _maxParticipants
+    ) external onlyOwner returns (uint256) {
+        require(_startTime < _endTime, "Invalid time range");
+        
+        uint256 questId = nextQuestId;
+        nextQuestId++;
+        
+        quests[questId] = Quest({
+            id: questId,
+            title: _title,
+            description: _description,
+            rewardAmount: _rewardAmount,
+            rewardToken: _rewardToken,
+            isActive: true,
+            startTime: _startTime,
+            endTime: _endTime,
+            maxParticipants: _maxParticipants,
+            currentParticipants: 0
+        });
+        
+        emit QuestCreated(questId, _title, _rewardAmount);
+        return questId;
+    }
+    
+    // User starts a quest
+    function startQuest(uint256 _questId) external {
+        Quest storage quest = quests[_questId];
+        
+        require(quest.id != 0, "Quest does not exist");
+        require(quest.isActive, "Quest is not active");
+        require(block.timestamp >= quest.startTime, "Quest has not started yet");
+        require(block.timestamp <= quest.endTime, "Quest has ended");
+        require(quest.currentParticipants < quest.maxParticipants, "Quest is full");
+        require(!userProgress[_questId][msg.sender].hasStarted, "Already started this quest");
+        
+        userProgress[_questId][msg.sender] = UserProgress({
+            hasStarted: true,
+            hasCompleted: false,
+            startTime: block.timestamp,
+            completionTime: 0
+        });
+        
+        userQuests[msg.sender].push(_questId);
+        quest.currentParticipants++;
+        
+        emit QuestStarted(_questId, msg.sender);
+    }
+    
+    // Admin marks a quest as completed for a user
+    function completeQuest(uint256 _questId, address _user) external onlyOwner {
+        Quest storage quest = quests[_questId];
+        UserProgress storage progress = userProgress[_questId][_user];
+        
+        require(quest.id != 0, "Quest does not exist");
+        require(progress.hasStarted, "User has not started this quest");
+        require(!progress.hasCompleted, "User has already completed this quest");
+        
+        progress.hasCompleted = true;
+        progress.completionTime = block.timestamp;
+        
+        emit QuestCompleted(_questId, _user);
+    }
+    
+    // User claims reward after completing a quest
+    function claimReward(uint256 _questId) external {
+        Quest storage quest = quests[_questId];
+        UserProgress storage progress = userProgress[_questId][msg.sender];
+        
+        require(quest.id != 0, "Quest does not exist");
+        require(progress.hasCompleted, "Quest not completed");
+        
+        IERC20 token = IERC20(quest.rewardToken);
+        require(token.balanceOf(address(this)) >= quest.rewardAmount, "Insufficient reward balance");
+        
+        token.transfer(msg.sender, quest.rewardAmount);
+        
+        emit RewardClaimed(_questId, msg.sender, quest.rewardAmount);
+    }
+    
+    // Admin can deactivate a quest
+    function deactivateQuest(uint256 _questId) external onlyOwner {
+        Quest storage quest = quests[_questId];
+        require(quest.id != 0, "Quest does not exist");
+        quest.isActive = false;
+    }
+    
+    // Get all quests for a user
+    function getUserQuests(address _user) external view returns (uint256[] memory) {
+        return userQuests[_user];
+    }
+    
+    // Withdraw tokens from contract (emergency function)
+    function withdrawTokens(address _token, uint256 _amount) external onlyOwner {
+        IERC20(_token).transfer(owner(), _amount);
+    }
+}
