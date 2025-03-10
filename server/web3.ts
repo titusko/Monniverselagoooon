@@ -1,4 +1,4 @@
-// Temporarily fix ES Module import error in web3.ts by using CommonJS
+
 // Stub out blockchain functionality for now, to be implemented later
 const web3Stub = {
   connect: () => console.log('Blockchain connection stubbed'),
@@ -10,4 +10,5 @@ const web3Stub = {
   getTransactionStatus: () => Promise.resolve('success')
 };
 
-module.exports = { web3: web3Stub };
+// Export using ES module syntax
+export const web3 = web3Stub;
