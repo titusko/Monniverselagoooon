@@ -144,7 +144,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-export const insertQuestSchema = createInsertSchema(quests);
+export const insertQuestSchema = createInsertSchema(quests).omit({
+  id: true,
+  createdAt: true,
+  createdBy: true,
+});
 export const insertTeamSchema = createInsertSchema(teams);
 export const insertMessageSchema = createInsertSchema(messages);
 
@@ -157,3 +161,4 @@ export type Team = typeof teams.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type InsertQuest = z.infer<typeof insertQuestSchema>;
