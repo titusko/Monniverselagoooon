@@ -10,5 +10,5 @@ const web3Stub = {
   getTransactionStatus: () => Promise.resolve('success')
 };
 
-// Export using ES module syntax
-export const web3 = web3Stub;
+// Export using default ES module syntax
+export default web3Stub;

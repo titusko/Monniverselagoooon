@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { web3 } from "./web3";
+import web3 from "./web3";
 import { insertQuestSchema, insertTeamSchema } from "@shared/schema";
 import { requireAdmin } from "./middleware/admin";
 import { setupWebSocket } from "./websocket";
